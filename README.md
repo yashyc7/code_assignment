@@ -2,6 +2,10 @@
 
 A Django application that allows users to purchase products using Stripe payment processing.
 
+## Whole Workflow : 
+<img width="1742" height="2853" alt="image" src="https://github.com/user-attachments/assets/bcffbd7b-1178-45d2-9858-501df2bbdd93" />
+
+
 ## Features
 
 - Display of three fixed products
