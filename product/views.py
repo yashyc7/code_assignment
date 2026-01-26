@@ -163,20 +163,29 @@ def stripe_webhook(request):
     """Handle Stripe webhooks for payment events"""
     payload = request.body
     sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
-    
-    try:
-        event = stripe.Webhook.construct_event(
-            payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
-        )
-    except ValueError:
-        return HttpResponse(status=400)
-    except stripe.error.SignatureVerificationError:
-        return HttpResponse(status=400)
-    
+
+    # In development, allow unsigned webhooks for testing
+    if settings.DEBUG and not sig_header:
+        # Parse the payload directly for testing
+        try:
+            event = json.loads(payload)
+        except json.JSONDecodeError:
+            return HttpResponse(status=400)
+    else:
+        # Production: verify signature
+        try:
+            event = stripe.Webhook.construct_event(
+                payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
+            )
+        except ValueError:
+            return HttpResponse(status=400)
+        except stripe.error.SignatureVerificationError:
+            return HttpResponse(status=400)
+
     # Handle the checkout.session.completed event
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
-        
+
         # Fulfill the purchase
         try:
             order = Order.objects.get(stripe_checkout_session_id=session['id'])
@@ -186,5 +195,5 @@ def stripe_webhook(request):
                 order.save()
         except Order.DoesNotExist:
             pass
-    
+
     return HttpResponse(status=200)
