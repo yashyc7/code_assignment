@@ -15,12 +15,14 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 
 def index(request):
     products = Product.objects.all()
+    paid_orders = Order.objects.none()
 
-    if request.user.is_authenticated:
-        paid_orders = Order.objects.filter(
-            user=request.user,
-            status='paid'
-        )
+    if request.user:
+        if request.user.is_authenticated:
+            paid_orders = Order.objects.filter(
+                user=request.user,
+                status='paid'
+            )
     else:
         # 🔥 DO NOT force-create session
         session_key = request.session.session_key
