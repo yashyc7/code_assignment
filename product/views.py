@@ -14,25 +14,30 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 def index(request):
-    """Main page showing products and user's paid orders"""
     products = Product.objects.all()
-    
-    # Get user's paid orders (by session for anonymous users)
+    paid_orders = Order.objects.none()
+
     if request.user.is_authenticated:
-        paid_orders = Order.objects.filter(user=request.user, status='paid')
+        paid_orders = Order.objects.filter(
+            user=request.user,
+            status='paid'
+        )
     else:
-        session_key = request.session.session_key
-        if not session_key:
+        if not request.session.session_key:
             request.session.create()
-            session_key = request.session.session_key
-        paid_orders = Order.objects.filter(session_key=session_key, status='paid')
-    
+
+        paid_orders = Order.objects.filter(
+            session_key=request.session.session_key,
+            status='paid'
+        )
+
     context = {
         'products': products,
         'paid_orders': paid_orders,
         'stripe_publishable_key': settings.STRIPE_PUBLISHABLE_KEY,
     }
     return render(request, 'products/index.html', context)
+
 
 
 @require_POST
@@ -52,8 +57,12 @@ def create_checkout_session(request):
         
         with transaction.atomic():
             # Create pending order
+            
+            if not request.session.session_key:
+                request.session.create()
+
             order = Order.objects.create(
-                session_key=request.session.session_key or request.session.create(),
+                session_key=request.session.session_key,
                 user=request.user if request.user.is_authenticated else None,
                 status='pending',
                 total_amount=0  # Will update after calculating
