@@ -15,7 +15,6 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 
 def index(request):
     products = Product.objects.all()
-    paid_orders = Order.objects.none()
 
     if request.user.is_authenticated:
         paid_orders = Order.objects.filter(
@@ -23,20 +22,23 @@ def index(request):
             status='paid'
         )
     else:
-        if not request.session.session_key:
-            request.session.create()
+        # 🔥 DO NOT force-create session
+        session_key = request.session.session_key
 
-        paid_orders = Order.objects.filter(
-            session_key=request.session.session_key,
-            status='paid'
-        )
+        if session_key:
+            paid_orders = Order.objects.filter(
+                session_key=session_key,
+                status='paid'
+            )
+        else:
+            paid_orders = Order.objects.none()
 
-    context = {
+    return render(request, 'products/index.html', {
         'products': products,
         'paid_orders': paid_orders,
         'stripe_publishable_key': settings.STRIPE_PUBLISHABLE_KEY,
-    }
-    return render(request, 'products/index.html', context)
+    })
+
 
 
 
